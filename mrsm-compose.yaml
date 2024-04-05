@@ -1,57 +1,23 @@
-### Comment these out if not running in Docker.
-root_dir: "/meerschaum"
-plugins_dir:
-  - "/meerschaum/plugins"
-  - "/app/plugins"
+# root_dir: "/meerschaum"
+# plugins_dir:
+  # - "/meerschaum/plugins"
+  # - "/app/plugins"
 
-### All pipes are tagged with the project name
-### (defaults to directory name).
-project_name: "example-project"
+project_name: "m1finance"
 
-### 1. Module-level `fetch()` (plugin:example)
-### 2. Custom connector `fetch()` (example:secret)
 sync:
   pipes:
-    - connector: "plugin:example"
-      metric: "foo"
-      location: "bar"
+    - connector: "plugin:m1finance"
+      metric: "activities"
       columns:
         datetime: "timestamp"
-        id: "id"
+        id: "ticker"
 
-    - connector: "example:secret"
-      metric: "foo"
-      location: "bar"
-      columns:
-        datetime: "timestamp"
-        id: "id"
-
-    - connector: "plugin:clone"
-      metric: "foo"
-      parameters:
-        sources:
-          - pipe:
-              connector: "plugin:example"
-              metric: "foo"
-              location: "bar"
-          - pipe:
-              connector: "example:secret"
-              metric: "foo"
-              location: "bar"
-
-### You may list external plugins to be installed.
-plugins:
-  - "clone"
-
-### Define the MRSM_CONFIG for this isolated project.
 config:
   meerschaum:
     instance: "sql:main"
     connectors:
       sql:
         main: MRSM{meerschaum:connectors:sql:main}
-      example:
-        secret: MRSM{meerschaum:connectors:example:secret}
 
-### Other environment variables to include (e.g. AWS creds).
 environment: {}
