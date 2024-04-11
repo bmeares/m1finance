@@ -1,18 +1,43 @@
-# root_dir: "/meerschaum"
-# plugins_dir:
-  # - "/meerschaum/plugins"
-  # - "/app/plugins"
+root_dir: "/meerschaum"
+plugins_dir:
+  - "/meerschaum/plugins"
+  - "/app/plugins"
 
 project_name: "m1finance"
 
 sync:
+  schedule: 'every 12 hours'
   pipes:
     - connector: "plugin:m1finance"
-      metric: "activities"
+      metric: "dividends"
       columns:
-        datetime: "timestamp"
-        id: "ticker"
+        datetime: "date"
+        id: "id"
+      parameters:
+        m1finance:
+          dividends: true
+          cash: false
+          trades: false
+          positions: false
+          transfers: false
+          symbols: []
 
+    - connector: "sql:main"
+      metric: "dividends"
+      columns:
+        datetime: "date"
+        symbol: "symbol"
+      parameters:
+        query: |-
+          SELECT
+            "date",
+            "cashSecurity"->'security'->>'symbol' AS "symbol",
+            SUM("amount") OVER (
+              PARTITION BY "cashSecurity"->'security'->>'symbol'
+                ORDER BY "date"
+            )
+          FROM plugin_m1finance_dividends
+ 
 config:
   meerschaum:
     instance: "sql:main"
