@@ -6,8 +6,8 @@
 Extract transactions from M1 Finance.
 """
 
-__version__ = '0.0.1'
-required = ['selenium>=4.0.0', 'pyotp', 'requestium', 'selenium-wire']
+__version__ = '0.0.2'
+required = ['selenium>=4.0.0', 'pyotp', 'requestium', 'selenium-wire', 'selenium-stealth', 'blinker==1.7.0']
 
 import pathlib
 import pickle
@@ -66,19 +66,38 @@ def get_session():
     global _driver, _driver_location
     if _driver is not None:
         return _driver
-    from seleniumwire.webdriver import Firefox
-    from selenium.webdriver.firefox.service import Service as FirefoxService
-    from selenium.webdriver.firefox.options import Options
-    from requestium import Session
+
+    with mrsm.Venv('m1finance'):
+        import blinker
+        from seleniumwire.webdriver import Chrome
+        from selenium.webdriver.chrome.service import Service as ChromeService
+        from selenium.webdriver.chrome.options import Options
+        from requestium import Session
+        from selenium_stealth import stealth
 
 
     options = Options()
-    options.add_argument('--headless')
-    _driver = Firefox(
-        service = FirefoxService(),
+    #  options.add_argument('--headless')
+    options.add_argument('--lang=en_US')
+    #  options.add_argument('--window-size=1920,1080')
+    #  options.add_argument('--start-maximized')
+    options.add_argument('--disable-gpu')
+    #  options.add_argument('--no-sandbox')
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36")
+    _driver = Chrome(
+        service = ChromeService(),
         options = options,
     )
     _driver.implicitly_wait(15)
+    stealth(
+        _driver,
+        languages = ["en-US", "en"],
+        vendor = "Google Inc.",
+        platform = "Win32",
+        webgl_vendor = "Intel Inc.",
+        renderer = "Intel Iris OpenGL Engine",
+        fix_hairline = True,
+    )
     return Session(driver=_driver)
 
 import atexit
@@ -91,15 +110,23 @@ def exit_handler():
 atexit.register(exit_handler)
 
 XPATHS: Dict[str, str] = {
-    'username-input': "/html/body/div[2]/div/div/div[2]/div[2]/div[1]/div/form/div[2]/div/div[1]/div/input",
-    'password-input': "/html/body/div[2]/div/div/div[2]/div[2]/div[1]/div/form/div[2]/div/div[2]/div/input",
-    'login-button': "/html/body/div[2]/div/div/div[2]/div[2]/div[1]/div/form/div[4]/div/button",
-    '2fa-input': "/html/body/div[2]/div/div/div[2]/div[2]/div/div/form/div/div/input",
-    '2fa-button': "/html/body/div[2]/div/div/div[2]/div[2]/div/div/form/button",
+    #  'username-input': '//*[@id="root"]/div/div/div[2]/div[2]/div[1]/div/form/div[2]/div/div[1]/div/input',
+    'username-input': '//input[@name="username"]',
+    #  'username-input': "/html/body/div[2]/div/div/div[2]/div[2]/div[1]/div/form/div[2]/div/div[1]/div/input",
+    'password-input': '//input[@name="password"]',
+    #  'password-input': '//*[@id="root"]/div/div/div[2]/div[2]/div[1]/div/form/div[2]/div/div[2]/div/input',
+    #  'password-input': "/html/body/div[2]/div/div/div[2]/div[2]/div[1]/div/form/div[2]/div/div[2]/div/input",
+    'login-button': '//*[@id="root"]/div/div/div[2]/div[2]/div[1]/div/form/div[4]/div/button',
+    #  'login-button': "/html/body/div[2]/div/div/div[2]/div[2]/div[1]/div/form/div[4]/div/button",
+    #  '2fa-input': "/html/body/div[2]/div/div/div[2]/div[2]/div/div/form/div/div/input",
+    '2fa-input': '//input[@name="code"]',
+    #  '2fa-button': "/html/body/div[2]/div/div/div[2]/div[2]/div/div/form/button",
+    '2fa-button': '//button[@type="submit"]',
     'invest': '/html/body/div[2]/div/div/div/div[2]/div/div/nav/div[2]/div[3]/div/div',
     'first-account': '/html/body/div[2]/div/div/div/div[2]/div/div/nav/div[2]/div[5]/div/div/div/p',
     'activity': '/html/body/div[2]/div/div/div/div[2]/div/div/div/nav/div/div[1]/a[2]/div/p',
-    'activity-table': '/html/body/div[2]/div/div/div/div[2]/div/div/div/div[2]/div/div/div/div[2]/div/div',
+    #  'activity-table': '/html/body/div[2]/div/div/div/div[2]/div/div/div/div[2]/div/div/div/div[2]/div/div',
+    'activity-table': '//div[@data-testid="table-grid-cell"]',
 }
 
 URLS: Dict[str, str] = {
@@ -121,7 +148,7 @@ def login_to_m1(session):
     from selenium.webdriver.common.by import By
     from pyotp import TOTP
     
-    wait = WebDriverWait(session.driver, 15)
+    wait = WebDriverWait(session.driver, 10)
 
     cf = get_plugin_config(warn=False)
     if not cf:
@@ -138,6 +165,7 @@ def login_to_m1(session):
     totp = TOTP(otp)
     token = totp.now()
 
+    time.sleep(1)
     session.driver.ensure_element("xpath", XPATHS['2fa-input']).send_keys(token)
     button = session.driver.ensure_element("xpath", XPATHS['2fa-button'], state='clickable')
     time.sleep(1)

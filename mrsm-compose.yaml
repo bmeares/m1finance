@@ -1,7 +1,7 @@
-root_dir: "/meerschaum"
-plugins_dir:
-  - "/meerschaum/plugins"
-  - "/app/plugins"
+# root_dir: "/meerschaum"
+# plugins_dir:
+  # - "/meerschaum/plugins"
+  # - "/app/plugins"
 
 project_name: "m1finance"
 
